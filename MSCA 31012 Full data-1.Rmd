@@ -1,0 +1,79 @@
+---
+title: "MSCA 31012 Final Project Initial Data Analysis"
+output: html_document
+date: "2022-12-01"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+# Load required package
+library(tidyverse)
+```
+
+
+```{r message = FALSE}
+datapath <- "C:/Users/tfurr/OneDrive/Documents/full_Data1.csv" # Set the path for the data
+
+full_data <- read_csv(datapath) # Read in the data. Should take several seconds
+
+```
+
+```{r}
+head(full_data) # Look at the first few values
+```
+
+```{r}
+summary(full_data) # Look at the summary of the data
+```
+
+```{r}
+(type_count <- full_data %>% # Shows a count of rideable type. Used for graph below
+  count(rideable_type))
+
+(member_count <- full_data %>% # Shows a count of member_casual. Used for graph below
+  count(member_casual))
+```
+
+```{r}
+# Creates a graph that shows the ride type on the x axis and the number of occurrences on the y axis. Also shows the number above the bars
+ggplot(data=type_count, aes(x = rideable_type, y = n))+
+  geom_bar(stat="identity", fill = "steelblue")+
+  geom_text(aes(label = n), vjust = -0.25)+
+  ylab("Number")
+
+
+# Creates a graph that shows the member type on the x axis and the number of occurrences on the y axis. Also shows the number above the bars
+ggplot(data = member_count, aes(x = member_casual, y = n))+
+  geom_bar(stat = "identity", fill = "steelblue")+
+  geom_text(aes(label = n), vjust = -0.25)+
+  ylab("Number")
+```
+
+
+
+
+```{r}
+(na_count <- sapply(full_data, function(y) sum(is.na(y)))) # Shows the number of NA values across all variables
+(unique_count <- sapply(full_data, function(y) length(unique(y)))) # Shows the number of unique values across all variables
+```
+
+
+```{r}
+full_data_nums <- full_data %>% # Selects all numeric variables
+  select_if(is.numeric)
+
+Mean <- sapply(full_data_nums, mean, na.rm = TRUE) # Finds the mean across all numeric variables
+
+five_number_sums <- sapply(full_data_nums, fivenum) # Finds the 5 number summary across all numeric variables
+row.names(five_number_sums) <- c("Min", "1stQ", "Median", "3rdQ", "Max") # Gives row names
+
+six_num_sums <- rbind(five_number_sums, Mean) # Adds mean to the 5 number summary
+
+six_num_sums <- six_num_sums[c(1, 2, 3, 6, 4, 5),] # Puts the mean underneath the median
+
+six_num_sums
+```
+

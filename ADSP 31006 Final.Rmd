@@ -1,0 +1,230 @@
+---
+title: "ADSP 31006 Final Project"
+output: html_document
+date: "2023-11-15"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+suppressWarnings(suppressMessages(library(tseries)))
+suppressWarnings(suppressMessages(library(tidyverse)))
+suppressWarnings(suppressMessages(library(fpp)))
+suppressWarnings(suppressMessages(library(TSA)))
+suppressWarnings(suppressMessages(library(forecast)))
+
+options(scipen = 999)
+```
+
+
+```{r}
+df <- read.csv("Combined_Monthly_Rides.csv")
+head(df)
+```
+
+```{r}
+ggplot(df, aes(x = Count)) +
+  geom_histogram(fill = "skyblue", color = "black", bins = 10) +
+  labs(title = "Histogram of Divvy Rides", x = "Count", y = "Frequency") +
+  theme_minimal()
+```
+
+```{r}
+monthplot(df$Count)
+```
+
+
+```{r}
+df_ts <- ts(as.numeric(df$Count), start = c(2013, 6), frequency = 12)
+
+training_dta = df$Count[df$Year.Month < "2021-10"]
+testing_dta = df$Count[df$Year.Month >= "2021-10"]
+
+train = ts(training_dta, frequency = 12, start = c(2013,6))
+test = ts(testing_dta, frequency = 12, start = c(2021, 10))
+```
+
+## This is ARIMA and SARIMA
+
+```{r}
+df_ts %>% autoplot()
+train %>% autoplot()
+test %>% autoplot()
+```
+
+
+
+```{r}
+lam <- BoxCox.lambda(train)
+
+BoxCox(train, lambda = lam) %>% autoplot()
+```
+
+```{r}
+df_diff <- diff(train)
+df_diff2 <- diff(df_diff)
+
+df_diff %>% autoplot()
+df_diff2 %>% autoplot()
+
+df_diffs <- diff(train, lag=12)
+df_diff2s <- diff(df_diffs, lag = 12)
+
+diff_best <- diff(train)
+diff_best <- diff(diff_best, lag = 12)
+```
+
+```{r}
+kpss.test(df_diff)
+kpss.test(df_diff2)
+
+kpss.test(df_diffs)
+kpss.test(df_diff2s)
+```
+
+
+```{r}
+tsdisplay(diff_best)
+```
+
+```{r}
+non_seas_auto <- auto.arima(train, seasonal = FALSE, lambda = "auto", trace = TRUE)
+non_seas_auto
+```
+
+
+```{r}
+auto_model <- auto.arima(train, seasonal = TRUE, lambda = "auto", trace = TRUE)
+summary(auto_model)
+```
+
+```{r}
+checkresiduals(auto_model)
+```
+
+```{r}
+checkresiduals(non_seas_auto)
+```
+
+
+```{r}
+eacf(train)
+```
+
+```{r}
+eacf_model <- Arima(train, order = c(0,1,2), lambda = lam)
+summary(eacf_model)
+```
+
+
+
+```{r}
+forc <- forecast(auto_model, h = 24)
+plot(forc)
+```
+
+```{r}
+pred <- forc$mean
+error <- test - pred
+plot(error, ylab="Forecasting error", main = 'Error between actual and prediction', xlab = 'Year')
+```
+
+```{r }
+sum_squred_error <- sqrt(mean(error^2))
+print(sum_squred_error)
+```
+
+```{r}
+mae <- mean(abs(error))
+print(mae)
+```
+
+## Fourier Model
+
+```{r}
+aicc <- list(aicc = Inf)
+
+for(i in 1:6){
+  fit <- auto.arima(train, xreg=fourier(train, K=i), seasonal= FALSE)
+  aicc[i] <- fit$aicc
+}
+
+which.min(aicc)
+```
+
+```{r}
+best_fourier <- auto.arima(train, xreg=fourier(train, K=2), seasonal=FALSE)
+summary(best_fourier)
+```
+
+
+```{r}
+checkresiduals(best_fourier)
+```
+
+```{r}
+f_fore <- forecast(best_fourier, xreg = fourier(train, K = 2, h = 24))
+
+plot(f_fore)
+```
+
+```{r}
+four_pred <- f_fore$mean
+four_pred
+four_error <- test - four_pred
+plot(four_error, ylab="Forecasting error", main = 'Error between actual and prediction', xlab = 'Year')
+```
+
+```{r}
+four_sum_squred_error <- sqrt(mean(four_error^2))
+print(four_sum_squred_error)
+```
+
+```{r}
+four_mae <- mean(abs(four_error))
+print(four_mae)
+```
+
+## Naive Approach
+
+
+
+```{r}
+snaives <- snaive(train, h = 24)
+plot(snaives)
+```
+
+```{r}
+checkresiduals(snaives)
+```
+
+
+
+```{r}
+nai_pred <- snaives$mean
+nai_error <- test - nai_pred
+plot(nai_error, ylab="Forecasting error", main = 'Error between actual and prediction', xlab = 'Year')
+```
+
+```{r}
+naive_sum_squred_error <- sqrt(mean((test- nai_pred)^2))
+print(naive_sum_squred_error)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
